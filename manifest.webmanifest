@@ -1,0 +1,11 @@
+{
+  "name": "Second Brain",
+  "short_name": "Brain",
+  "description": "Capture ideas, learning, projects and tasks, link them, and review them.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eaeef3",
+  "theme_color": "#2a45a6",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
