@@ -24,6 +24,9 @@
   --f-ui:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --r:8px;
+  /* the brain map is a dark specimen plate in both themes */
+  --brain-bg:#0c1120; --brain-panel:#141b2ee8; --brain-ink:#e3e9f7; --brain-muted:#8592ae; --brain-line:#3b4a6b; --brain-accent:#9fb3ff;
+  --b-idea:#f2b65e; --b-learning:#4fd6c3; --b-project:#b9a2ff; --b-task:#f590ab;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --bg:#0f131a; --surface:#161b24; --surface-2:#1e2430; --ink:#e5e9f0; --muted:#98a2b4; --line:#2a3240;
@@ -216,6 +219,34 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);margin:0;
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:8px;font-size:14px;display:flex;gap:12px;align-items:center;z-index:20;max-width:calc(100% - 32px);box-shadow:0 6px 24px rgba(0,0,0,.18)}
 .toast button{background:none;border:0;color:inherit;text-decoration:underline;font-weight:600;padding:0}
 
+.conn h3{display:flex;align-items:center;gap:8px}
+.conn h3 .btn{margin-left:auto;text-transform:none;letter-spacing:0;font-family:var(--f-ui);font-size:13px}
+.lg-host{height:270px;border-radius:10px;overflow:hidden;background:var(--brain-bg)}
+.lg-host.tag{height:240px;margin-bottom:12px;flex:none}
+.conn-hint{margin:0;font-size:13px;color:var(--muted)}
+.brain-cv{display:block;width:100%;height:100%;touch-action:none}
+.brain-cv.local{touch-action:pan-y}
+.brain-wrap{height:100%;min-height:440px;display:flex;flex-direction:column;gap:10px;padding-bottom:4px}
+.brain-top{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.brain-h{font-family:var(--f-display);font-weight:600;font-size:30px;margin:0;letter-spacing:-.015em}
+.brain-sub{margin:2px 0 0;color:var(--muted);font-family:var(--f-mono);font-size:12.5px}
+.brain-ctl{margin-left:auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:13.5px}
+.tgl{display:flex;gap:6px;align-items:center;cursor:pointer}
+.brain-stage{position:relative;flex:1;min-height:360px;border-radius:12px;overflow:hidden;background:var(--brain-bg)}
+.brain-card{position:absolute;top:12px;left:12px;width:min(300px,calc(100% - 24px));background:var(--brain-panel);color:var(--brain-ink);border:1px solid var(--brain-line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.brain-card .t{font-family:var(--f-display);font-size:18px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.brain-card p{margin:0;font-size:13px;color:var(--brain-muted);overflow-wrap:anywhere}
+.brain-card .chip{color:var(--brain-muted)}
+.brain-card .acts{display:flex;gap:6px;margin-top:4px}
+.brain-card .btn{background:transparent;border-color:var(--brain-line);color:var(--brain-ink)}
+.brain-card .btn.primary{background:var(--brain-accent);border-color:var(--brain-accent);color:var(--brain-bg)}
+.brain-card .k-idea{color:var(--b-idea)} .brain-card .k-learning{color:var(--b-learning)} .brain-card .k-project{color:var(--b-project)} .brain-card .k-task{color:var(--b-task)} .brain-card .tagkb{color:var(--brain-muted)}
+.brain-legend{position:absolute;left:12px;bottom:10px;display:flex;gap:4px 12px;flex-wrap:wrap;font:11.5px var(--f-mono);color:var(--brain-muted);max-width:calc(100% - 24px);pointer-events:none}
+.brain-legend span{display:flex;align-items:center;gap:5px}
+.bsw{width:8px;height:8px;border-radius:50%;display:inline-block}
+.b-idea{background:var(--b-idea)} .b-learning{background:var(--b-learning)} .b-project{background:var(--b-project)} .b-task{background:var(--b-task)} .tagsw{border:1.4px solid var(--brain-muted)}
+.brain-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--brain-muted);font-size:14px;pointer-events:none}
+.brain-hint{margin:0;font-size:12.5px;color:var(--muted)}
 @media (max-width:1080px){ .app{grid-template-columns:180px minmax(240px,300px) minmax(0,1fr)} .top{grid-template-columns:180px minmax(0,1fr) auto} .ed-in{padding:14px 20px 36px} .grid2{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:760px){
   .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:"top" "side" "main";column-gap:0}
@@ -236,6 +267,8 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);margin:0;
   .ed-in{padding:6px 14px 28px}
   .ed-title{font-size:23px}
   .hello h1{font-size:24px}
+  .brain-h{font-size:24px}
+  .lg-host{height:230px}
 }
 @media (prefers-reduced-motion:reduce){ .thinking::after{animation:none;content:"..."} }
 </style>
@@ -278,9 +311,9 @@ const KINDS = {
   project:{label:"Project", plural:"Projects", code:"PR"},
   task:{label:"Task", plural:"Tasks", code:"TK"}
 };
-const WIDE = new Set(["home","ask"]);
+const WIDE = new Set(["home","ask","brain"]);
 const S = { notes:new Map(), view:"home", tag:null, q:"", prevView:"home", sel:null, mode:"read",
-  loaded:false, slow:false, err:null, db:null, sample:null, saving:0, saveErr:null, suggest:new Map(), shuffle:0, edFor:null };
+  loaded:false, slow:false, err:null, db:null, sample:null, saving:0, saveErr:null, suggest:new Map(), shuffle:0, edFor:null, brTags:true, brDone:false, brainFocus:null };
 const pending = new Set(), timers = new Map(), chains = new Map();
 const $ = id => document.getElementById(id);
 const $app=$("app"), $list=$("list"), $ed=$("ed"), $wide=$("wide"), $navs=$("navs");
@@ -430,6 +463,7 @@ function render(o={}){
   $app.classList.toggle("show-ed", !wide && !!S.sel);
   if(wide){
     if(S.view==="home") renderHome();
+    else if(S.view==="brain") renderBrain($wide.dataset.v!=="brain");
     else if($wide.dataset.v!=="ask" || o.viewChanged) renderAsk();
     $wide.dataset.v=S.view;
   } else { $wide.dataset.v=""; renderList(); renderEditor(o.editor); }
@@ -439,6 +473,7 @@ function renderSide(){
   const c=counts(), v=S.view;
   let h=`<div class="nav-g">`+
     nv("home",'<span class="hash">◇</span>Home',null,"",v==="home")+
+    nv("brain",'<span class="hash">✺</span>Brain',null,"",v==="brain")+
     nv("inbox",'<span class="hash">↓</span>Inbox',c.inbox||"","",v==="inbox")+
     (S.sample?nv("ask",'<span class="hash">?</span>Ask your notes',null,"",v==="ask"):"")+`</div>`;
   h+=`<div class="nav-g"><div class="nav-h">Drawers</div>`;
@@ -481,11 +516,13 @@ function renderList(){
   if(S.view in KINDS) acts+=`<button class="btn sm" data-act="new" data-kind="${S.view}">New ${KINDS[S.view].label.toLowerCase()}</button>`;
   if(S.view==="tag") acts+=`<button class="btn sm" data-act="new" data-kind="idea">New note</button>`;
   let h=`<div class="list-h"><h2>${esc(viewTitle())}</h2><span class="ct">${arr.length}</span><div class="acts">${acts}</div></div>`;
+  if(S.view==="tag" && S.loaded && arr.length) h+=`<div class="lg-host tag" id="tg-host"></div>`;
   if(S.suggestErr) h+=`<div class="banner">${esc(S.suggestErr)}</div>`;
   if(!S.loaded) h+=`<div class="empty">${S.slow?"<strong>Can't reach your notes yet.</strong>They'll appear here once the connection is back.":"Loading your notes…"}</div>`;
   else if(!arr.length) h+=`<div class="empty">${emptyCopy()}</div>`;
   else h+=`<div class="rows">${arr.map(rowHtml).join("")}</div>`;
   $list.innerHTML=h;
+  const th=$("tg-host"); if(th){ th.append(TG.canvas); TG.setData(localData("#"+S.tag),"#"+S.tag); TG.kick(); }
 }
 function emptyCopy(){
   switch(S.view){
@@ -525,6 +562,7 @@ function renderEditor(force){
     extra+=`<div class="sec"><h3>Tasks · ${ts.filter(t=>t.done).length}/${ts.length} done</h3><div class="mini">${ts.map(t=>`<div class="it${t.done?" done":""}" data-open="${t.id}"><input type="checkbox" data-act="done" data-id="${t.id}" ${t.done?"checked":""} aria-label="Mark done"><span class="t">${esc(t.title||"Untitled")}</span>${dueChip(t)}</div>`).join("")}</div>
       <form class="addline" data-form="addtask"><input id="ed-newtask" placeholder="Add a task to this project" aria-label="New task"><button class="btn sm" type="submit">Add</button></form></div>`;
   }
+  const conn = write ? "" : `<div class="sec conn"><h3>Connections<button class="btn ghost sm" data-act="brain-focus">Open in Brain</button></h3><div class="lg-host" id="lg-host"></div><p class="conn-hint" id="conn-hint" hidden>Not connected yet. Link it to another note with [[Title]] or give it a #tag, and it joins the network.</p></div>`;
   const bl=backlinks(n);
   if(bl.length) extra+=`<div class="sec"><h3>Linked from</h3><div class="mini">${bl.sort(byUpdated).map(o=>`<div class="it" data-open="${o.id}">${kb(o)}<span class="t">${esc(o.title||"Untitled")}</span><span class="chip">${fmt(o.updated)}</span></div>`).join("")}</div></div>`;
   $ed.innerHTML=`<div class="ed-in">
@@ -539,10 +577,12 @@ function renderEditor(force){
     ${filebar}
     <div class="ttl-row">${k==="task"?`<input type="checkbox" id="ed-done" ${n.done?"checked":""} aria-label="Mark done">`:""}<input class="ed-title" id="ed-title" value="${esc(n.title||"")}" placeholder="Untitled" aria-label="Title"></div>
     <div class="meta">${meta}</div>
+    ${conn}
     ${body}
     ${extra}
   </div>`;
   $ed.scrollTop=keepScroll;
+  const lh=$("lg-host"); if(lh){ const d=localData(n.id); lh.append(LG.canvas); LG.setData(d,n.id); LG.kick(); $("conn-hint").hidden=d.nodes.length>1; }
   const ta=$("ed-body"); if(ta) autosize(ta);
 }
 function autosize(ta){ ta.style.height="auto"; ta.style.height=Math.max(280, ta.scrollHeight+4)+"px"; }
@@ -647,6 +687,241 @@ async function suggestFiling(){
 }
 function applySugg(id){ const s=S.suggest.get(id), n=S.notes.get(id); if(!s||!n) return; const f={kind:s.kind,title:s.title,inbox:false,tags:[...new Set([...(n.tags||[]),...s.tags])]}; if(s.kind==="task"&&n.done===undefined) f.done=false; if(s.kind==="project"&&!n.status) f.status="active"; S.suggest.delete(id); patch(id,f,{now:true,editor:true}); }
 
+/* ---------- brain graph ---------- */
+function BrainGraph(o){
+  const local=!!o.local;
+  const cv=document.createElement("canvas"); cv.className="brain-cv"+(local?" local":"");
+  cv.setAttribute("role","img"); cv.setAttribute("aria-label", local?"Map of notes connected to this one":"Map of all your notes and how they connect");
+  const ctx=cv.getContext("2d");
+  let W=300,H=200,dpr=1, nodes=[], edges=[], byId=new Map(), adj=new Map(), focus=null, hover=null, alpha=0, raf=0, sig="", pulses=[], lastSpawn=0, autoFit=true, now=0;
+  const view={x:0,y:0,k:1};
+  const reduce=matchMedia("(prefers-reduced-motion: reduce)");
+  let C={};
+  function colors(){ const cs=getComputedStyle(document.documentElement), g=v=>cs.getPropertyValue(v).trim()||"#8899aa";
+    C={bg:g("--brain-bg"), ink:g("--brain-ink"), muted:g("--brain-muted"), line:g("--brain-line"), accent:g("--brain-accent"), idea:g("--b-idea"), learning:g("--b-learning"), project:g("--b-project"), task:g("--b-task")}; }
+  colors();
+  new MutationObserver(()=>{ colors(); draw(); }).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+  new ResizeObserver(()=>{ const w=cv.clientWidth,h=cv.clientHeight; if(!w||!h) return; dpr=Math.min(2,window.devicePixelRatio||1); W=w; H=h; cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr); if(autoFit) fit(true); draw(); }).observe(cv);
+  const colorOf=n=> n.type==="tag" ? C.muted : (C[n.kind]||C.accent);
+  const trunc=(s,m)=> s.length>m ? s.slice(0,m-1)+"…" : s;
+  const hashBend=s=>{ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))|0; return (h&1?1:-1)*(0.08+((h>>>1)%7)/100); };
+
+  function setData(data, focusId){
+    const s=data.sig+"|"+(focusId||"");
+    if(s===sig) return; const firstLoad=!nodes.length; sig=s;
+    const old=byId; byId=new Map();
+    nodes=data.nodes.map(n=>{ const prev=old.get(n.id); const m=Object.assign(prev||{x:(Math.random()-.5)*260, y:(Math.random()-.5)*160, vx:0, vy:0}, n); m.fx=m.fy=null; byId.set(n.id,m); return m; });
+    edges=data.edges.map(e=>({...e, s:byId.get(e.s), t:byId.get(e.t), bend:hashBend(e.s+e.t)})).filter(e=>e.s&&e.t);
+    adj=new Map(); nodes.forEach(n=>{ adj.set(n.id,new Set()); n.deg=0; });
+    edges.forEach(e=>{ adj.get(e.s.id).add(e.t.id); adj.get(e.t.id).add(e.s.id); e.s.deg++; e.t.deg++; });
+    nodes.forEach(n=>{ n.r = n.type==="tag" ? 3.5+Math.sqrt(n.deg)*1.1 : 4.5+Math.sqrt(n.deg)*2.1; });
+    for(const n of nodes) if(!old.has(n.id)){ const nb=[...adj.get(n.id)].map(id=>byId.get(id)).find(m=>old.has(m.id)); if(nb){ n.x=nb.x+(Math.random()-.5)*50; n.y=nb.y+(Math.random()-.5)*50; } }
+    focus = focusId ? byId.get(focusId)||null : null;
+    if(hover && !byId.has(hover.id)) hover=null;
+    if(local && focus){ if(!old.has(focus.id)){ focus.x=0; focus.y=0; } focus.fx=0; focus.fy=0; }
+    if(local) autoFit=true;
+    pulses=[]; alpha=Math.max(alpha, firstLoad?1:.6); start();
+  }
+  function setFocus(id){ focus=id?byId.get(id)||null:null; pulses=[]; start(); }
+  function degree(id){ return adj.get(id)?.size||0; }
+
+  function tick(){
+    const n=nodes.length, rep=(local?1500:1000)*alpha;
+    for(let i=0;i<n;i++){ const a=nodes[i];
+      for(let j=i+1;j<n;j++){ const b=nodes[j]; let dx=b.x-a.x, dy=b.y-a.y, d2=dx*dx+dy*dy;
+        if(d2<.01){ dx=Math.random()-.5; dy=Math.random()-.5; d2=.25; }
+        if(d2>160000) continue;
+        const d=Math.sqrt(d2), f=rep/d2, fx=dx/d*f, fy=dy/d*f; a.vx-=fx; a.vy-=fy; b.vx+=fx; b.vy+=fy; } }
+    for(const e of edges){ const a=e.s,b=e.t, dx=b.x-a.x, dy=b.y-a.y, d=Math.sqrt(dx*dx+dy*dy)||1, k=.05*alpha*(d-e.len)/d; a.vx+=dx*k; a.vy+=dy*k; b.vx-=dx*k; b.vy-=dy*k; }
+    for(const a of nodes){
+      a.vx-=a.x*.006*alpha; a.vy-=a.y*.011*alpha;            /* wider than tall, like a brain seen from the side */
+      if(a.fx!=null){ a.x=a.fx; a.y=a.fy; a.vx=a.vy=0; continue; }
+      a.vx*=.62; a.vy*=.62;
+      const sp=Math.hypot(a.vx,a.vy); if(sp>24){ a.vx*=24/sp; a.vy*=24/sp; }
+      a.x+=a.vx; a.y+=a.vy; }
+    alpha*=.982;
+  }
+  function bounds(){ let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity; for(const n of nodes){ x0=Math.min(x0,n.x-n.r); x1=Math.max(x1,n.x+n.r); y0=Math.min(y0,n.y-n.r); y1=Math.max(y1,n.y+n.r+16); } return nodes.length?{x0,y0,x1,y1}:{x0:-50,y0:-50,x1:50,y1:50}; }
+  function fit(instant){ if(!nodes.length) return; const b=bounds(), pad=local?50:70, bw=Math.max(60,b.x1-b.x0), bh=Math.max(60,b.y1-b.y0);
+    const k=Math.max(.25, Math.min((W-pad*2)/bw, (H-pad*2)/bh, local?2.4:2.2)), tx=-(b.x0+b.x1)/2*k, ty=-(b.y0+b.y1)/2*k;
+    if(instant){ view.k=k; view.x=tx; view.y=ty; } else { view.k+=(k-view.k)*.12; view.x+=(tx-view.x)*.12; view.y+=(ty-view.y)*.12; } }
+
+  function ctrl(e){ const a=e.s,b=e.t; return [(a.x+b.x)/2-(b.y-a.y)*e.bend, (a.y+b.y)/2+(b.x-a.x)*e.bend]; }
+  function onCurve(e,t){ const [cx,cy]=ctrl(e), u=1-t; return [u*u*e.s.x+2*u*t*cx+t*t*e.t.x, u*u*e.s.y+2*u*t*cy+t*t*e.t.y]; }
+  function stepPulses(t){
+    const hub=hover||focus; if(!hub) { pulses=[]; return; }
+    if(t-lastSpawn>(local?380:300)){ lastSpawn=t; const inc=edges.filter(e=>e.s===hub||e.t===hub);
+      if(inc.length){ const e=inc[Math.floor(Math.random()*inc.length)]; pulses.push({e, from:hub, to:e.s===hub?e.t:e.s, root:hub, hop:0, p:0, v:.007+Math.random()*.008}); } }
+    const born=[];
+    for(const p of pulses){ p.p+=p.v; if(p.p>=1 && p.hop<1 && Math.random()<.55){ const nx=edges.filter(e=>(e.s===p.to||e.t===p.to) && e!==p.e); if(nx.length){ const e=nx[Math.floor(Math.random()*nx.length)]; born.push({e, from:p.to, to:e.s===p.to?e.t:e.s, root:p.root, hop:p.hop+1, p:0, v:p.v*.9}); } } }
+    pulses=pulses.filter(p=>p.p<1 && p.root===hub).concat(born);
+  }
+  function draw(){
+    ctx.setTransform(dpr,0,0,dpr,0,0); ctx.globalAlpha=1; ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+    const g=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.65); g.addColorStop(0,C.accent); g.addColorStop(1,C.bg);
+    ctx.globalAlpha=.07; ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.globalAlpha=1;
+    ctx.translate(W/2+view.x,H/2+view.y); ctx.scale(view.k,view.k);
+    const hub=hover||focus, nb=hub?adj.get(hub.id):null, lw=1/view.k;
+    for(const e of edges){
+      const on=hub&&(e.s===hub||e.t===hub);
+      let a = hub ? (on?.8:.1) : (e.type==="tag"?.28:.45);
+      if(local && hub && !on) a=(e.s.depth<=1&&e.t.depth<=1)?.32:.14;
+      ctx.globalAlpha=a; ctx.strokeStyle=on?colorOf(e.s===hub?e.t:e.s):C.line; ctx.lineWidth=(on?1.6:1)*lw;
+      ctx.setLineDash(e.type==="tag"?[3*lw,4*lw]:[]);
+      const [cx,cy]=ctrl(e); ctx.beginPath(); ctx.moveTo(e.s.x,e.s.y); ctx.quadraticCurveTo(cx,cy,e.t.x,e.t.y); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    for(const p of pulses){ const t=p.from===p.e.s?p.p:1-p.p, [x,y]=onCurve(p.e,t), c=colorOf(p.to);
+      ctx.globalAlpha=.3; ctx.fillStyle=c; ctx.beginPath(); ctx.arc(x,y,5.5*lw,0,7); ctx.fill();
+      ctx.globalAlpha=.95; ctx.fillStyle=C.ink; ctx.beginPath(); ctx.arc(x,y,1.7*lw,0,7); ctx.fill(); }
+    const breathe = reduce.matches ? 0 : Math.sin(now/600)*.5+.5;
+    for(const n of nodes){
+      const dim=hub && n!==hub && !nb.has(n.id), far=local && n.depth>=2 && !(hub && hub!==focus && nb.has(n.id));
+      const base=dim?.2:far?.5:1, c=colorOf(n), r=n.r;
+      if(n.type==="tag"){ ctx.globalAlpha=base; ctx.fillStyle=C.bg; ctx.strokeStyle=c; ctx.lineWidth=1.4*lw; ctx.beginPath(); ctx.arc(n.x,n.y,r,0,7); ctx.fill(); ctx.stroke(); }
+      else {
+        const glow = n===hub ? 1.35+breathe*.5 : 1;
+        ctx.fillStyle=c;
+        ctx.globalAlpha=base*.13; ctx.beginPath(); ctx.arc(n.x,n.y,r*2.9*glow,0,7); ctx.fill();
+        ctx.globalAlpha=base*.28; ctx.beginPath(); ctx.arc(n.x,n.y,r*1.75,0,7); ctx.fill();
+        ctx.globalAlpha=base*(n.done?.45:1); ctx.beginPath(); ctx.arc(n.x,n.y,r,0,7); ctx.fill();
+        if(n.inbox){ ctx.globalAlpha=base; ctx.strokeStyle=C.ink; ctx.lineWidth=1*lw; ctx.setLineDash([2*lw,2*lw]); ctx.beginPath(); ctx.arc(n.x,n.y,r+2.5*lw,0,7); ctx.stroke(); ctx.setLineDash([]); }
+      }
+      if(n===focus || n===hover){ ctx.globalAlpha=1; ctx.strokeStyle=C.ink; ctx.lineWidth=1.5*lw; ctx.beginPath(); ctx.arc(n.x,n.y,r+4.5*lw,0,7); ctx.stroke(); }
+    }
+    const fs=(local?11.5:12)*lw;
+    ctx.font=`500 ${fs}px "IBM Plex Sans", system-ui, sans-serif`; ctx.textAlign="center"; ctx.textBaseline="top"; ctx.lineJoin="round";
+    for(const n of nodes){
+      const dim=hub && n!==hub && !nb.has(n.id);
+      const show = local ? (n.depth<=1 || (hub&&nb.has(n.id)) || view.k>1.3) : (n===hub || (nb&&nb.has(n.id)) || view.k>1.3 || n.deg>=5 || nodes.length<=24);
+      if(!show) continue;
+      const txt=trunc(n.label, n===hub?50:(local?24:26)), y=n.y+n.r+5*lw;
+      ctx.globalAlpha=dim?.3:(n===hub?1:(local&&n.depth>=2?.6:.88));
+      ctx.strokeStyle=C.bg; ctx.lineWidth=3.5*lw; ctx.strokeText(txt,n.x,y);
+      ctx.fillStyle=n.type==="tag"?C.muted:C.ink; ctx.fillText(txt,n.x,y);
+    }
+  }
+  function frame(t){
+    raf=0; now=t; if(!cv.isConnected || document.hidden) return;
+    if(alpha>.004){ tick(); if(autoFit) fit(false); }
+    const live=!reduce.matches && !!(hover||focus);
+    if(live) stepPulses(t);
+    draw();
+    if(alpha>.004 || live) raf=requestAnimationFrame(frame);
+  }
+  function start(){ if(!raf) raf=requestAnimationFrame(frame); }
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) start(); });
+
+  /* interaction */
+  const toWorld=(sx,sy)=>[(sx-W/2-view.x)/view.k, (sy-H/2-view.y)/view.k];
+  function pick(sx,sy,touch){ const [x,y]=toWorld(sx,sy); let best=null, bd=Infinity; for(const n of nodes){ const d=Math.hypot(n.x-x,n.y-y); const lim=n.r+(touch?14:7)/view.k; if(d<lim && d<bd){ bd=d; best=n; } } return best; }
+  const pts=new Map(); let drag=null, pinch=null, lastTap=0, lastTapNode=null;
+  const pos=e=>{ const r=cv.getBoundingClientRect(); return [e.clientX-r.left, e.clientY-r.top]; };
+  cv.addEventListener("pointerdown", e=>{
+    const [x,y]=pos(e); pts.set(e.pointerId,{x,y});
+    if(pts.size===2){ const [a,b]=[...pts.values()]; pinch={d:Math.hypot(a.x-b.x,a.y-b.y), k:view.k}; drag=null; return; }
+    const n=pick(x,y,e.pointerType==="touch");
+    if(!n && local && e.pointerType==="touch") { drag=null; return; }
+    try{ cv.setPointerCapture(e.pointerId); }catch(_){}
+    drag = n ? {node:n, sx:x, sy:y, moved:false} : {pan:true, sx:x, sy:y, vx:view.x, vy:view.y, moved:false};
+  });
+  cv.addEventListener("pointermove", e=>{
+    const [x,y]=pos(e);
+    if(pts.has(e.pointerId)) pts.set(e.pointerId,{x,y});
+    if(pinch && pts.size===2){ const [a,b]=[...pts.values()]; view.k=Math.max(.2,Math.min(4,pinch.k*Math.hypot(a.x-b.x,a.y-b.y)/pinch.d)); autoFit=false; start(); return; }
+    if(drag){
+      if(!drag.moved && Math.hypot(x-drag.sx,y-drag.sy)>4) drag.moved=true;
+      if(!drag.moved) return;
+      if(drag.node){ const [wx,wy]=toWorld(x,y); drag.node.fx=wx; drag.node.fy=wy; alpha=Math.max(alpha,.3); if(local) autoFit=false; }
+      else { view.x=drag.vx+(x-drag.sx); view.y=drag.vy+(y-drag.sy); autoFit=false; }
+      start(); return;
+    }
+    if(e.pointerType!=="touch"){ const n=pick(x,y,false); if(n!==hover){ hover=n; pulses=[]; cv.style.cursor=n?"pointer":""; start(); draw(); } }
+  });
+  function end(e){
+    pts.delete(e.pointerId); if(pts.size<2) pinch=null;
+    if(!drag) return; const d=drag; drag=null;
+    if(d.node && !(local && d.node===focus)){ d.node.fx=d.node.fy=null; }
+    if(d.moved) return;
+    const t=performance.now();
+    if(d.node && lastTapNode===d.node && t-lastTap<350){ lastTapNode=null; o.onOpen&&o.onOpen(d.node); return; }
+    lastTap=t; lastTapNode=d.node||null;
+    o.onClick&&o.onClick(d.node||null);
+  }
+  cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", e=>{ pts.delete(e.pointerId); drag=null; pinch=null; });
+  cv.addEventListener("pointerleave", ()=>{ if(hover && !drag){ hover=null; pulses=[]; cv.style.cursor=""; start(); draw(); } });
+  if(!local) cv.addEventListener("wheel", e=>{ e.preventDefault(); const [x,y]=pos(e); const [wx,wy]=toWorld(x,y); const k=Math.max(.2,Math.min(4,view.k*Math.exp(-e.deltaY*.0015)));
+    view.k=k; view.x=x-W/2-wx*k; view.y=y-H/2-wy*k; autoFit=false; start(); draw(); }, {passive:false});
+
+  return { canvas:cv, setData, setFocus, degree, kick(){ start(); draw(); }, fitNow(){ autoFit=true; fit(true); start(); draw(); } };
+}
+
+/* graph data from notes */
+function graphData(opt={}){
+  const tags=opt.tags!==false, done=opt.done!==false;
+  const list=notes().filter(n=> done || !(n.kind==="task" && n.done));
+  const ids=new Set(list.map(n=>n.id));
+  const titleMap=new Map(); for(const n of list){ const k=(n.title||"").trim().toLowerCase(); if(k && !titleMap.has(k)) titleMap.set(k,n); }
+  const ns=list.map(n=>({id:n.id, type:"note", kind:n.kind, label:n.title||"Untitled", inbox:!!n.inbox, done:!!(n.kind==="task"&&n.done)}));
+  const es=[], seen=new Set();
+  const add=(s,t,type,len)=>{ if(s===t) return; const k=s<t?s+">"+t:t+">"+s; if(seen.has(k)) return; seen.add(k); es.push({s,t,type,len}); };
+  for(const n of list){
+    for(const m of (n.body||"").matchAll(/\[\[([^\]]+)\]\]/g)){ const to=titleMap.get(m[1].trim().toLowerCase()); if(to) add(n.id,to.id,"link",90); }
+    if(n.kind==="task" && n.project && ids.has(n.project)) add(n.id,n.project,"proj",60);
+  }
+  if(tags){ const made=new Set(); for(const n of list) for(const t of allTags(n)){ if(t==="example") continue; const id="#"+t; if(!made.has(id)){ made.add(id); ns.push({id, type:"tag", kind:"tag", label:"#"+t}); } add(n.id,id,"tag",60); } }
+  const sig=ns.map(n=>n.id+":"+n.label+":"+n.kind+":"+(n.done?1:0)+(n.inbox?"i":"")).join(",")+"|"+es.map(e=>e.s+">"+e.t).join(",");
+  return {nodes:ns, edges:es, sig};
+}
+function localData(fid){
+  const g=graphData({tags:true, done:true});
+  const nb=new Map(); g.nodes.forEach(n=>nb.set(n.id,[])); g.edges.forEach(e=>{ nb.get(e.s).push(e.t); nb.get(e.t).push(e.s); });
+  if(!nb.has(fid)) return {nodes:[], edges:[], sig:"none:"+fid};
+  const depth=new Map([[fid,0]]);
+  const first=nb.get(fid).slice().sort((a,b)=>(a[0]==="#")-(b[0]==="#"));
+  for(const id of first) depth.set(id,1);
+  let far=0;
+  for(const id of first) for(const j of nb.get(id)) if(!depth.has(j) && far<28){ depth.set(j,2); far++; }
+  const nodes=g.nodes.filter(n=>depth.has(n.id)).map(n=>({...n, depth:depth.get(n.id)}));
+  const edges=g.edges.filter(e=>depth.has(e.s)&&depth.has(e.t)&&!(depth.get(e.s)===2&&depth.get(e.t)===2));
+  return {nodes, edges, sig:nodes.map(n=>n.id+":"+n.depth+":"+n.label+":"+n.kind+":"+(n.done?1:0)).join(",")+"|"+edges.map(e=>e.s+">"+e.t).join(",")};
+}
+const graphClick = n => { if(!n) return; if(n.type==="tag") setView("tag", n.id.slice(1)); else if(n.id!==S.sel) openNote(n.id); };
+const LG = BrainGraph({local:true, onClick:graphClick, onOpen:graphClick});
+const TG = BrainGraph({local:true, onClick:graphClick, onOpen:graphClick});
+const GG = BrainGraph({local:false,
+  onClick:n=>{ S.brainFocus=n?n.id:null; GG.setFocus(S.brainFocus); renderBrainCard(); },
+  onOpen:n=>{ if(n.type==="tag") setView("tag", n.id.slice(1)); else openNote(n.id); }});
+function renderBrain(mount){
+  if(mount || !$("brain-stage")){
+    $wide.innerHTML=`<div class="brain-wrap">
+      <div class="brain-top"><div><h1 class="brain-h">Brain</h1><p class="brain-sub" id="brain-sub"></p></div>
+        <div class="brain-ctl"><label class="tgl"><input type="checkbox" id="br-tags" ${S.brTags?"checked":""}> Tags</label><label class="tgl"><input type="checkbox" id="br-done" ${S.brDone?"checked":""}> Finished tasks</label><button class="btn sm" data-act="br-fit">Fit to view</button></div></div>
+      <div class="brain-stage" id="brain-stage"><div class="brain-card" id="brain-card" hidden></div>
+        <div class="brain-legend">${Object.entries(KINDS).map(([k,v])=>`<span><i class="bsw b-${k}"></i>${v.plural}</span>`).join("")}<span><i class="bsw tagsw"></i>Tags</span></div>
+        <div class="brain-empty" id="brain-empty" hidden>Your brain map appears as you add notes. Link notes with [[Title]] or share a #tag to connect them.</div></div>
+      <p class="brain-hint">Click a node to light up what it connects to. Double-click to open it. Drag nodes to rearrange, drag the background to pan, scroll or pinch to zoom.</p></div>`;
+    $("brain-stage").prepend(GG.canvas);
+  }
+  const d=graphData({tags:S.brTags, done:S.brDone});
+  if(S.brainFocus && !d.nodes.some(n=>n.id===S.brainFocus)) S.brainFocus=null;
+  GG.setData(d, S.brainFocus); GG.kick();
+  const nn=d.nodes.filter(n=>n.type==="note").length, links=d.edges.filter(e=>e.type!=="tag").length, tg=d.nodes.length-nn;
+  $("brain-sub").textContent=`${pl(nn,"note")} · ${pl(links,"link")}${S.brTags?` · ${pl(tg,"tag")}`:""}`;
+  $("brain-empty").hidden=!!d.nodes.length || !S.loaded;
+  renderBrainCard();
+}
+function renderBrainCard(){
+  const c=$("brain-card"); if(!c) return; const id=S.brainFocus;
+  if(!id){ c.hidden=true; return; }
+  const deg=GG.degree(id);
+  if(id[0]==="#"){ const t=id.slice(1), cnt=notes().filter(n=>allTags(n).includes(t)).length;
+    c.innerHTML=`<span class="kb tagkb">TAG</span><div class="t">#${esc(t)}</div><p>${pl(cnt,"note")} tagged</p><div class="acts"><button class="btn sm primary" data-tag="${esc(t)}">Show notes</button><button class="btn sm" data-act="br-clear">Close</button></div>`; }
+  else { const n=S.notes.get(id); if(!n){ c.hidden=true; return; } const sn=snippet(n);
+    c.innerHTML=`${kb(n)}<div class="t">${esc(n.title||"Untitled")}</div>${sn?`<p>${esc(sn.slice(0,140))}</p>`:""}<p class="chip">${pl(deg,"connection")}</p><div class="acts"><button class="btn sm primary" data-open="${n.id}">Open note</button><button class="btn sm" data-act="br-clear">Close</button></div>`; }
+  c.hidden=false;
+}
+
 /* ---------- navigation ---------- */
 function setView(v, tag){ S.view=v; S.tag=tag||null; if(v!=="search"){ S.q=""; $("search").value=""; } S.sel=null; render({viewChanged:true, editor:true}); }
 function openNote(id, mode){
@@ -688,6 +963,9 @@ document.addEventListener("click", e=>{
     case "apply-all": { const ids=[...S.suggest.keys()].filter(id=>S.notes.get(id)?.inbox); ids.forEach(applySugg); toast(`Filed ${ids.length} capture${ids.length===1?"":"s"}`); break; }
     case "ask-sug": { const q=$("ask-q"); q.value=el.textContent; ask(q.value); break; }
     case "ask-stop": S.askCtl?.abort(); break;
+    case "brain-focus": { const f=S.sel; setView("brain"); S.brainFocus=f; renderBrain(false); break; }
+    case "br-fit": GG.fitNow(); break;
+    case "br-clear": S.brainFocus=null; GG.setFocus(null); renderBrainCard(); break;
     case "export": exportNotes(); break;
     case "import": $("import-file").click(); break;
   }
@@ -696,6 +974,8 @@ document.addEventListener("change", e=>{
   const t=e.target, id=S.sel;
   if(t.matches("[data-act=done]")) return toggleDone(t.dataset.id, t.checked);
   if(t.matches("#prose input[type=checkbox][data-line]")) return toggleLine(id, +t.dataset.line);
+  if(t.id==="br-tags"){ S.brTags=t.checked; renderBrain(false); return; }
+  if(t.id==="br-done"){ S.brDone=t.checked; renderBrain(false); return; }
   if(!id) return;
   switch(t.id){
     case "ed-done": patch(id,{done:t.checked},{now:true}); break;
@@ -737,6 +1017,7 @@ document.addEventListener("keydown", e=>{
   if(e.target.id==="ed-title" && e.key==="Enter"){ e.preventDefault(); if(S.mode!=="write"){ S.mode="write"; renderEditor(true); } $("ed-body")?.focus(); return; }
   if(e.target.id==="ask-q" && e.key==="Enter" && (e.metaKey||e.ctrlKey)){ e.preventDefault(); ask(e.target.value); return; }
   if(e.key==="Escape" && isTyping()) document.activeElement.blur();
+  else if(e.key==="Escape" && S.view==="brain" && S.brainFocus){ S.brainFocus=null; GG.setFocus(null); renderBrainCard(); }
 });
 
 /* ---------- local storage (IndexedDB) ---------- */
