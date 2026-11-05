@@ -247,6 +247,12 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);margin:0;
 .b-idea{background:var(--b-idea)} .b-learning{background:var(--b-learning)} .b-project{background:var(--b-project)} .b-task{background:var(--b-task)} .tagsw{border:1.4px solid var(--brain-muted)}
 .brain-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--brain-muted);font-size:14px;pointer-events:none}
 .brain-hint{margin:0;font-size:12.5px;color:var(--muted)}
+.steps{margin:0;padding-left:1.3em;font-size:14px;display:flex;flex-direction:column;gap:4px;align-self:stretch}
+.syncform{display:flex;flex-direction:column;gap:10px;align-self:stretch}
+.syncform .fld input{background:var(--bg)}
+.confirm-note{margin:0;font-size:13px;color:var(--warn)}
+.syncon{display:inline-flex;align-items:center;gap:6px;font-weight:500;color:var(--ink);margin-right:4px}
+.status[data-act]{cursor:pointer}
 @media (max-width:1080px){ .app{grid-template-columns:180px minmax(240px,300px) minmax(0,1fr)} .top{grid-template-columns:180px minmax(0,1fr) auto} .ed-in{padding:14px 20px 36px} .grid2{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:760px){
   .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:"top" "side" "main";column-gap:0}
@@ -288,7 +294,7 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);margin:0;
       </form>
       <div class="hints"><span><b>t:</b> task</span><span><b>p:</b> project</span><span><b>l:</b> learning</span><span><b>#tag</b> anywhere</span><span>no prefix → Inbox</span><span><span class="kbd">/</span> to focus</span></div>
     </div>
-    <div class="status" id="status" role="status"><span class="dot"></span><span>Loading</span></div>
+    <div class="status" id="status" role="status" data-act="sync-open" title="Sync settings"><span class="dot"></span><span>Loading</span></div>
   </header>
   <nav class="side" aria-label="Views">
     <div class="search"><input id="search" type="search" placeholder="Search notes" aria-label="Search notes"></div>
@@ -375,11 +381,12 @@ function setStatus(){ const st=$("status"); let cls="", txt;
   else if(!S.loaded){ cls="busy"; txt=S.slow?"Can't reach your notes yet":"Loading"; }
   else if(S.saveErr){ cls="bad"; txt=S.saveErr; }
   else if(S.saving>0 || timers.size){ cls="busy"; txt="Saving…"; }
+  else if(Sync.cfg){ if(Sync.state==="syncing"){ cls="busy"; txt="Syncing…"; } else if(Sync.state==="error"){ cls="bad"; txt="Sync paused"; } else if(Sync.state==="offline"){ cls="busy"; txt="Offline · saved on device"; } else txt="Synced "+ago(Sync.last); }
   else txt="Saved on this device";
   st.innerHTML=`<span class="dot ${cls}"></span><span>${esc(txt)}</span>`;
 }
 function saveErrText(e){ const c=e&&e.code; if(c==="quota_exceeded") return "Storage full. Delete notes to save more"; if(c==="invalid_argument") return "Only the owner can save here"; if(c==="revoked") return "Access changed. Not saving"; return "Couldn't save. Will retry on next edit"; }
-function scheduleWrite(id, delay){ clearTimeout(timers.get(id)); pending.add(id); timers.set(id, setTimeout(()=>flush(id), delay)); setStatus(); }
+function scheduleWrite(id, delay){ clearTimeout(timers.get(id)); pending.add(id); timers.set(id, setTimeout(()=>flush(id), delay)); setStatus(); scheduleSync(Math.max(4000, delay+1500)); }
 function flush(id){
   clearTimeout(timers.get(id)); timers.delete(id);
   const n=S.notes.get(id);
@@ -392,6 +399,7 @@ function flush(id){
 }
 function patch(id, fields, o={}){
   const n=S.notes.get(id); if(!n) return;
+  delete n.seed;
   Object.assign(n, fields, {updated:Date.now()});
   scheduleWrite(id, o.now?0:700);
   queueRender(o.editor?{editor:true}:{});
@@ -413,6 +421,7 @@ function deleteNote(id){
       .then(()=>{S.saveErr=null;}, e=>{S.saveErr=saveErrText(e);}).finally(()=>{ S.saving--; pending.delete(id); setStatus(); }); chains.set(id,p); }
   else pending.delete(id);
   if(wasSel) S.sel=null;
+  scheduleSync(2500);
   render({editor:true});
 }
 addEventListener("pagehide", ()=>{ for(const id of [...timers.keys()]) flush(id); });
@@ -462,7 +471,7 @@ function render(o={}){
   $list.hidden=wide; $ed.hidden=wide; $wide.hidden=!wide;
   $app.classList.toggle("show-ed", !wide && !!S.sel);
   if(wide){
-    if(S.view==="home") renderHome();
+    if(S.view==="home"){ if(!($wide.contains(document.activeElement) && isTyping())) renderHome(); }
     else if(S.view==="brain") renderBrain($wide.dataset.v!=="brain");
     else if($wide.dataset.v!=="ask" || o.viewChanged) renderAsk();
     $wide.dataset.v=S.view;
@@ -594,7 +603,7 @@ function renderHome(){
   let h=`<div class="wide-in"><div class="hello"><h1>${days[d.getDay()]}, ${MON[d.getMonth()]} ${d.getDate()}</h1><p>${S.loaded?`${all.length} note${all.length===1?"":"s"} · ${pl(c.idea,"idea")} · ${c.learning} learning · ${pl(c.project,"open project")} · ${pl(c.task,"open task")}`:(S.slow?"Can't reach your notes yet":"Loading your notes…")}</p></div>`;
   if(!S.loaded){ $wide.innerHTML=h+"</div>"; return; }
   if(!S.db) h+=`<div class="banner">This browser is blocking storage (a private window or blocked site data), so notes you add here won't be kept.</div>`;
-  if(!all.length){ h+=`<div class="empty" style="padding-left:0"><strong>Your second brain is empty.</strong>Type a thought in the bar above and press Enter. Start with <b>t:</b> for a task, <b>p:</b> for a project or <b>l:</b> for something you learned.</div>`+(S.db?backupPanel():"")+`</div>`; $wide.innerHTML=h; return; }
+  if(!all.length){ h+=`<div class="empty" style="padding-left:0"><strong>Your second brain is empty.</strong>Type a thought in the bar above and press Enter. Start with <b>t:</b> for a task, <b>p:</b> for a project or <b>l:</b> for something you learned.</div>`+(S.db?`<div class="grid2" style="margin-top:22px">${syncPanel()}${backupPanel()}</div>`:"")+`</div>`; $wide.innerHTML=h; return; }
   if(c.inbox) h+=`<div class="inbox-cta"><span class="n">${c.inbox}</span><p>${c.inbox===1?"capture is":"captures are"} waiting in your inbox. File ${c.inbox===1?"it":"them"} so ${c.inbox===1?"it turns":"they turn"} up in the right place later.</p><button class="btn primary" data-view="inbox">Process inbox</button></div>`;
   const open=all.filter(n=>n.kind==="task"&&!n.done&&!n.inbox).sort(taskSort).slice(0,8);
   const projs=all.filter(n=>n.kind==="project"&&!n.inbox&&(n.status||"active")==="active").sort(byUpdated).slice(0,6);
@@ -608,7 +617,7 @@ function renderHome(){
   h+=`<div class="grid2">`;
   if(cand.length){ const dayN=Math.floor(Date.now()/864e5); const r=cand[(dayN+S.shuffle)%cand.length]; h+=`<div class="panel"><h2>From the archive</h2><div class="box resurf">${kb(r)}<div class="t" data-open="${r.id}">${esc(r.title||"Untitled")}</div>${snippet(r)?`<div class="s">${esc(snippet(r))}</div>`:""}<div class="acts"><button class="btn sm" data-open="${r.id}">Open</button>${cand.length>1?`<button class="btn ghost sm" data-act="shuffle">Show another</button>`:""}<span class="chip" style="margin-left:auto">last edited ${fmt(r.updated)}</span></div></div></div>`; }
   h+=`<div class="panel"><h2>Recently touched</h2><div class="box"><div class="mini">${recent.map(n=>`<div class="it" data-open="${n.id}">${kb(n)}<span class="t">${esc(n.title||"Untitled")}</span><span class="chip">${fmt(n.updated)}</span></div>`).join("")}</div></div></div></div>`;
-  if(S.db) h+=backupPanel();
+  if(S.db) h+=`<div class="grid2">${syncPanel()}${backupPanel()}</div>`;
   $wide.innerHTML=h+"</div>";
 }
 
@@ -967,6 +976,9 @@ document.addEventListener("click", e=>{
     case "br-fit": GG.fitNow(); break;
     case "br-clear": S.brainFocus=null; GG.setFocus(null); renderBrainCard(); break;
     case "export": exportNotes(); break;
+    case "sync-now": syncNow(); break;
+    case "sync-open": if(S.view!=="home") setView("home"); setTimeout(()=>{ const sp=$("sync-panel"); if(sp) sp.scrollIntoView({behavior:"smooth", block:"start"}); },30); break;
+    case "sync-off": if(armed===el){ armed=null; syncDisconnect(); } else { disarm(); armed=el; el.dataset.orig=el.textContent; el.textContent="Click again to turn off"; el.classList.add("armed"); } break;
     case "import": $("import-file").click(); break;
   }
 });
@@ -998,6 +1010,7 @@ function renameLinks(id){
 document.addEventListener("input", e=>{
   const t=e.target, id=S.sel;
   if(t.id==="search"){ const q=t.value; if(q.trim()){ if(S.view!=="search") S.prevView=WIDE.has(S.view)?"all":S.view; S.view="search"; S.q=q; } else { S.view=S.prevView||"home"; S.q=""; } S.sel=null; render({editor:true}); return; }
+  if(t.id==="sync-token"||t.id==="sync-pass"||t.id==="sync-pass2"){ Sync.form[t.id]=t.value; return; }
   if(!id) return;
   if(t.id==="ed-title") patch(id,{title:t.value});
   else if(t.id==="ed-body"){ patch(id,{body:t.value}); autosize(t); }
@@ -1010,6 +1023,7 @@ document.addEventListener("submit", e=>{
     const where=n.inbox?"Inbox":KINDS[n.kind].plural; queueRender({editor:true});
     toast(`Captured to ${where}`,"Open",()=>openNote(n.id)); return; }
   if(f.dataset.form==="addtask"){ const inp=$("ed-newtask"); const v=inp.value.trim(); if(!v) return; const tags=bodyTags(v); createNote({kind:"task", title:v.replace(TAGRE," ").replace(/\s+/g," ").trim()||v, tags, project:S.sel, done:false}); inp.value=""; render({editor:true}); $("ed-newtask")&&$("ed-newtask").focus(); return; }
+  if(f.dataset.form==="sync"){ syncConnect(); return; }
   if(f.dataset.form==="ask"){ ask($("ask-q").value); return; }
 });
 document.addEventListener("keydown", e=>{
@@ -1039,7 +1053,10 @@ function makeLocalDb(idb){
     collection(){ return {
       doc(id){ id=id||("n"+Date.now().toString(36)+Math.random().toString(36).slice(2,8)); return { id,
         set: d=>tx("notes","readwrite",s=>s.put(JSON.parse(JSON.stringify(d)),id)).then(changed,fail),
-        delete: ()=>tx("notes","readwrite",s=>s.delete(id)).then(changed,fail) }; },
+        delete: opt=>new Promise((res,rej)=>{ let t; try{ t=idb.transaction(["notes","meta"],"readwrite"); }catch(e){ return rej(e); }
+          t.objectStore("notes").delete(id);
+          if(!(opt&&opt.silent)){ const ms=t.objectStore("meta"), g=ms.get("tombstones"); g.onsuccess=()=>{ const tb=g.result||{}; tb[id]=Date.now(); ms.put(tb,"tombstones"); }; }   /* one transaction, so parallel deletes can't lose each other's record */
+          t.oncomplete=()=>{ changed(); res(); }; t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error); }).catch(fail) }; },
       onSnapshot(next, err){ listeners.add(next); emit().catch(()=>err&&err({code:"unavailable"})); return ()=>listeners.delete(next); }
     }; },
     putMany: arr=>tx("notes","readwrite",s=>{ for(const n of arr){ const d={...n}; const id=d.id; delete d.id; s.put(JSON.parse(JSON.stringify(d)),id); } }).then(()=>{ changed(); return emit(); }, fail),
@@ -1048,7 +1065,7 @@ function makeLocalDb(idb){
 }
 function examples(){
   const now=Date.now(), D=864e5, dueIn=d=>iso(now+d*D);
-  const x=(id,ago,edited,f)=>({id, created:now-ago*D, updated:now-edited*D, inbox:false, pinned:false, body:"", ...f, tags:[...(f.tags||[]),"example"]});
+  const x=(id,ago,edited,f)=>({id, created:now-ago*D, updated:now-edited*D, inbox:false, pinned:false, body:"", seed:true, ...f, tags:[...(f.tags||[]),"example"]});
   return [
     x("ex-guide",12,1,{title:"How I use this second brain", kind:"idea", pinned:true, tags:["guide"], body:"## Capture fast, sort later\n- Type anything in the bar at the top and press Enter. Without a prefix it lands in the **Inbox**.\n- Start with `t:` for a task, `p:` for a project, `l:` for something learned. Add `#tags` anywhere.\n\n## File the inbox\n- Open each capture and choose Idea, Learning, Project or Task.\n\n## Connect ideas\n- Link notes by writing a title in double brackets, like [[Zone 2 training]]. A link to a note that doesn't exist yet creates it when you click it.\n- Every note lists the notes that link to it under *Linked from*.\n\n## Review\n- **Home** shows what's next, your active projects and one older note to revisit.\n- See [[Weekly review on Sunday evenings]] for a routine.\n\n## Keep a backup\n- Notes are stored in this browser. Use **Export backup** on Home regularly, and **Import backup** to move them to another device."}),
     x("ex-run",10,1,{title:"Run a half marathon in spring", kind:"project", status:"active", tags:["fitness"], body:"Goal: finish a half marathon in April without walking.\n\n## Plan\n- Build an aerobic base first, see [[Zone 2 training]]\n- Long run every Sunday, add 1 km a week\n- One rest week every fourth week"}),
@@ -1078,9 +1095,155 @@ $("import-file").addEventListener("change", async e=>{
   const incoming=arr.filter(n=>n&&typeof n.id==="string"&&/^[A-Za-z0-9_\-.~:@+]{1,200}$/.test(n.id)&&typeof n.title==="string"&&KINDS[n.kind]);
   const take=incoming.filter(n=>{ const cur=S.notes.get(n.id); return !cur || (Number(n.updated)||0) > (cur.updated||0); })
     .map(n=>({...n, tags:Array.isArray(n.tags)?n.tags.map(String):[], body:String(n.body||""), created:Number(n.created)||Date.now(), updated:Number(n.updated)||Date.now()}));
-  try{ await S.db.putMany(take); toast(`Imported ${take.length} note${take.length===1?"":"s"}${incoming.length>take.length?`, skipped ${incoming.length-take.length} you already have`:""}`); }
+  try{ await S.db.putMany(take); scheduleSync(1000); toast(`Imported ${take.length} note${take.length===1?"":"s"}${incoming.length>take.length?`, skipped ${incoming.length-take.length} you already have`:""}`); }
   catch(err){ toast(err&&err.code==="quota_exceeded"?"Your browser storage is full. Delete some notes and try again.":"Couldn't import. Try again."); }
 });
+
+/* ---------- encrypted sync through a secret GitHub Gist ---------- */
+const SYNC_FILE="second-brain.sync.json";
+const Sync={cfg:null, state:"off", last:null, err:null, timer:null, busy:false, again:false, form:{needConfirm:false, err:null, busy:false}};
+const b64=buf=>{ const a=new Uint8Array(buf); let s=""; for(let i=0;i<a.length;i+=0x8000) s+=String.fromCharCode.apply(null,a.subarray(i,i+0x8000)); return btoa(s); };
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const canon=v=> v===null||typeof v!=="object" ? JSON.stringify(v) : Array.isArray(v) ? "["+v.map(canon).join(",")+"]" : "{"+Object.keys(v).filter(k=>v[k]!==undefined).sort().map(k=>JSON.stringify(k)+":"+canon(v[k])).join(",")+"}";
+async function deriveKey(pass, salt, iter){
+  const base=await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2", salt, iterations:iter, hash:"SHA-256"}, base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+}
+async function seal(key, saltB64, iter, obj){
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, new TextEncoder().encode(JSON.stringify(obj)));
+  return JSON.stringify({app:"second-brain-sync", v:1, note:"Encrypted with AES-256-GCM. Only Second Brain with your passphrase can read this.", kdf:{alg:"PBKDF2-SHA256", iter, salt:saltB64}, iv:b64(iv), data:b64(ct), updated:new Date().toISOString()});
+}
+async function unseal(key, env){ const pt=await crypto.subtle.decrypt({name:"AES-GCM", iv:unb64(env.iv)}, key, unb64(env.data)); return JSON.parse(new TextDecoder().decode(pt)); }
+async function ghApi(token, path, opt={}){
+  const r=await fetch("https://api.github.com"+path, {...opt, cache:"no-store", headers:{Accept:"application/vnd.github+json", Authorization:"Bearer "+token, "X-GitHub-Api-Version":"2022-11-28", ...(opt.body?{"Content-Type":"application/json"}:{})}});
+  if(!r.ok){ const e=new Error("GitHub "+r.status); e.status=r.status; throw e; }
+  return r.status===204 ? null : r.json();
+}
+async function findGist(token){
+  for(let page=1; page<=10; page++){
+    const list=await ghApi(token, `/gists?per_page=100&page=${page}`);
+    const g=list.find(x=>x.files && x.files[SYNC_FILE]); if(g) return g.id;
+    if(list.length<100) return null;
+  }
+  return null;
+}
+async function readGist(token, id){
+  const g=await ghApi(token, "/gists/"+id); const f=g.files && g.files[SYNC_FILE];
+  if(!f){ const e=new Error("missing"); e.status=404; throw e; }
+  let txt=f.content; if(f.truncated){ const r=await fetch(f.raw_url, {cache:"no-store"}); txt=await r.text(); }
+  return JSON.parse(txt);
+}
+function syncErrText(e, connecting){
+  if(e && e.code==="decrypt") return connecting ? "That passphrase doesn't match the one you chose on your first device." : "This device's passphrase can't unlock the synced notes anymore. Disconnect, then connect again.";
+  if(e && e.code==="quota_exceeded") return "This browser's storage is full. Delete some notes, then sync again.";
+  if(e && e.status===401) return connecting ? "GitHub didn't accept that token. Check you copied all of it." : "GitHub stopped accepting the token. It may have expired. Disconnect and connect again with a new one.";
+  if(e && (e.status===403||e.status===404)) return connecting ? "That token can't use gists. Create one with the gist box ticked." : "Can't reach your sync gist. Check the token still has gist access and that the gist wasn't deleted.";
+  if(e && e.status>=500) return "GitHub is having trouble. Will try again shortly.";
+  if(e && e.msg) return e.msg;
+  return "Can't reach GitHub right now. Will try again when you're online.";
+}
+function scheduleSync(ms){ if(!Sync.cfg) return; clearTimeout(Sync.timer); Sync.timer=setTimeout(syncNow, ms); }
+async function syncConnect(){
+  const f=Sync.form, token=(f["sync-token"]||"").trim(), pass=f["sync-pass"]||"";
+  if(!token || !pass){ f.err="Enter your GitHub token and a passphrase."; return renderSyncBits(); }
+  f.busy=true; f.err=null; renderSyncBits(true);
+  try{
+    let cfg;
+    const id=await findGist(token);
+    if(id){
+      const env=await readGist(token, id);
+      const key=await deriveKey(pass, unb64(env.kdf.salt), env.kdf.iter);
+      try{ await unseal(key, env); }catch(_){ throw {code:"decrypt"}; }
+      cfg={token, gistId:id, key, salt:env.kdf.salt, iter:env.kdf.iter};
+    } else {
+      if(!f.needConfirm){ f.needConfirm=true; f.busy=false; renderSyncBits(true); setTimeout(()=>$("sync-pass2")&&$("sync-pass2").focus(),0); return; }
+      if(pass.length<8) throw {msg:"Use a passphrase of at least 8 characters."};
+      if((f["sync-pass2"]||"")!==pass) throw {msg:"The two passphrases don't match."};
+      const salt=b64(crypto.getRandomValues(new Uint8Array(16))), iter=310000;
+      const key=await deriveKey(pass, unb64(salt), iter);
+      const content=await seal(key, salt, iter, {notes:{}, deleted:{}});
+      const g=await ghApi(token, "/gists", {method:"POST", body:JSON.stringify({description:"Second Brain sync (encrypted)", public:false, files:{[SYNC_FILE]:{content}}})});
+      cfg={token, gistId:g.id, key, salt, iter};
+    }
+    await S.db.meta.set("sync", cfg);
+    Sync.cfg=cfg; Sync.state="on"; Sync.err=null; Sync.form={needConfirm:false, err:null, busy:false};
+    toast("Sync is on for this device");
+    await syncNow();
+  }catch(e){ f.busy=false; f.err=syncErrText(e, true); renderSyncBits(true); }
+}
+async function syncDisconnect(){
+  clearTimeout(Sync.timer); Sync.cfg=null; Sync.state="off"; Sync.err=null;
+  try{ await S.db.meta.set("sync", null); }catch(_){}
+  toast("Sync turned off on this device. Your notes stay here."); renderSyncBits(true);
+}
+async function syncNow(){
+  if(!Sync.cfg || !S.db) return;
+  if(Sync.busy){ Sync.again=true; return; }
+  if(!navigator.onLine){ Sync.state="offline"; renderSyncBits(); return; }
+  Sync.busy=true; Sync.state="syncing"; renderSyncBits();
+  try{
+    for(const id of [...timers.keys()]) flush(id);
+    await Promise.allSettled([...chains.values()]);
+    const {token, gistId, key, salt, iter}=Sync.cfg;
+    const env=await readGist(token, gistId);
+    let remote; try{ remote=await unseal(key, env); }catch(_){ throw {code:"decrypt"}; }
+    const rn=remote.notes||{}, rd=remote.deleted||{};
+    const ld=(await S.db.meta.get("tombstones"))||{};
+    const local=new Map(); for(const n of notes()){ const c={...n}; delete c.id; local.set(n.id,c); }
+    const ids=new Set([...Object.keys(rn), ...local.keys(), ...Object.keys(rd), ...Object.keys(ld)]);
+    const outN={}, outD={}, toPut=[], toDel=[], cutoff=Date.now()-180*864e5;
+    for(const id of ids){
+      const l=local.get(id), r=rn[id], tomb=Math.max(ld[id]||0, rd[id]||0);
+      let best = l && r ? ( l.seed&&!r.seed ? r : !l.seed&&r.seed ? l : (r.updated||0)>(l.updated||0) ? r : (l.updated||0)>(r.updated||0) ? l : r ) : (l||r);
+      if(best && tomb && (best.seed || (best.updated||0)<=tomb)) best=null;   /* a deletion beats older edits and untouched examples */
+      if(best){ outN[id]=best; if(!l || canon(l)!==canon(best)) toPut.push({...best, id}); }
+      else { if(tomb>cutoff) outD[id]=tomb; if(l) toDel.push(id); }
+    }
+    if(toPut.length) await S.db.putMany(toPut);
+    for(const id of toDel){ if(!pending.has(id)){ await S.db.collection("notes").doc(id).delete({silent:true}); S.notes.delete(id); if(S.sel===id) S.sel=null; } }
+    if(toDel.length) render({editor:true});
+    const cur=(await S.db.meta.get("tombstones"))||{};
+    for(const [k,v] of Object.entries(cur)) if(ld[k]!==v){ outD[k]=Math.max(outD[k]||0, v); Sync.again=true; }   /* deleted while syncing: keep it, push next round */
+    await S.db.meta.set("tombstones", outD);
+    if(canon(outN)!==canon(rn) || canon(outD)!==canon(rd)){
+      const content=await seal(key, salt, iter, {notes:outN, deleted:outD});
+      await ghApi(token, "/gists/"+gistId, {method:"PATCH", body:JSON.stringify({files:{[SYNC_FILE]:{content}}})});
+    }
+    Sync.last=Date.now(); Sync.err=null; Sync.state="on";
+    S.db.meta.set("syncLast", Sync.last).catch(()=>{});
+  }catch(e){ Sync.state="error"; Sync.err=syncErrText(e, false); }
+  finally{ Sync.busy=false; renderSyncBits(); if(Sync.again){ Sync.again=false; scheduleSync(1500); } }
+}
+function ago(ms){ if(!ms) return "not yet"; const s=(Date.now()-ms)/1000; if(s<45) return "just now"; if(s<3600) return Math.round(s/60)+" min ago"; if(s<86400) return Math.round(s/3600)+" h ago"; return fmt(ms); }
+function renderSyncBits(force){
+  setStatus();
+  if(S.view==="home" && (force || !($wide.contains(document.activeElement) && isTyping()))) renderHome();
+}
+function syncPanel(){
+  const f=Sync.form;
+  if(Sync.cfg){
+    const st = Sync.state==="syncing" ? "Syncing now…" : Sync.state==="offline" ? "You're offline. Changes are saved here and will sync when you reconnect." : Sync.state==="error" ? "" : `Last synced ${ago(Sync.last)}.`;
+    return `<div class="panel" id="sync-panel"><h2>Sync between devices</h2><div class="box resurf">
+      <div class="s" style="-webkit-line-clamp:unset"><span class="syncon"><span class="dot${Sync.state==="error"?" bad":Sync.state==="syncing"?" busy":""}"></span>On for this device</span> Notes are encrypted with your passphrase and synced through a secret gist on your GitHub account. ${esc(st)}</div>
+      ${Sync.err?`<p class="warnline" style="margin:0">${esc(Sync.err)}</p>`:""}
+      <div class="acts"><button class="btn sm primary" data-act="sync-now"${Sync.busy?" disabled":""}>Sync now</button><button class="btn sm" data-act="sync-off">Turn off on this device</button></div></div></div>`;
+  }
+  return `<div class="panel" id="sync-panel"><h2>Sync between devices</h2><div class="box resurf">
+    <div class="s" style="-webkit-line-clamp:unset">Keep your phone and laptop in sync through your GitHub account. Notes are encrypted with a passphrase before they leave this device, so GitHub only stores scrambled data.</div>
+    <ol class="steps"><li><a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=Second%20Brain%20sync" target="_blank" rel="noopener">Create a GitHub token</a> with only the <b>gist</b> box ticked, and copy it.</li><li>Paste it here and choose a passphrase. Use the same token and passphrase on every device.</li></ol>
+    <form class="syncform" data-form="sync" autocomplete="off">
+      <label class="fld"><span>GitHub token</span><input id="sync-token" type="password" value="${esc(f["sync-token"]||"")}" placeholder="ghp_…" autocomplete="off" spellcheck="false"></label>
+      <label class="fld"><span>Passphrase</span><input id="sync-pass" type="password" value="${esc(f["sync-pass"]||"")}" autocomplete="new-password"></label>
+      ${f.needConfirm?`<p class="confirm-note">This is your first synced device. Type the passphrase again. You'll need it on your other devices, and it can't be recovered if you forget it.</p><label class="fld"><span>Confirm passphrase</span><input id="sync-pass2" type="password" value="${esc(f["sync-pass2"]||"")}" autocomplete="new-password"></label>`:""}
+      <div class="acts"><button class="btn sm primary" type="submit"${f.busy?" disabled":""}>${f.busy?"Connecting…":f.needConfirm?"Create sync":"Connect"}</button></div>
+    </form>
+    ${f.err?`<p class="warnline" style="margin:0">${esc(f.err)}</p>`:""}</div></div>`;
+}
+document.addEventListener("visibilitychange", ()=>{ if(!Sync.cfg) return; if(document.hidden){ if(timers.size||pending.size) syncNow(); } else scheduleSync(400); });
+addEventListener("online", ()=>scheduleSync(500));
+addEventListener("offline", ()=>{ if(Sync.cfg){ Sync.state="offline"; renderSyncBits(); } });
+setInterval(()=>{ if(Sync.cfg && !document.hidden) scheduleSync(0); if(Sync.cfg) setStatus(); }, 120000);
 
 /* ---------- boot ---------- */
 render();
@@ -1090,6 +1253,7 @@ render();
   S.db=db; S.sample=null;
   if(!db){ S.loaded=true; render(); return; }
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(_){}
+  try{ const sc=await db.meta.get("sync"); if(sc&&sc.token&&sc.gistId&&sc.key){ Sync.cfg=sc; Sync.state="on"; Sync.last=(await db.meta.get("syncLast"))||null; } }catch(_){}
   try{ S.lastExport=(await db.meta.get("lastExport"))||null; if(!(await db.meta.get("seeded"))){ await db.putMany(examples()); await db.meta.set("seeded",true); } }catch(_){}
   db.collection("notes").onSnapshot(snap=>{
     const next=new Map();
@@ -1099,6 +1263,7 @@ render();
     if(S.sel && !S.notes.has(S.sel)) S.sel=null;
     render();
   }, ()=>{ S.loaded=true; S.saveErr="Can't load notes right now"; render(); });
+  if(Sync.cfg) scheduleSync(300);
   if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
 })();
 })();

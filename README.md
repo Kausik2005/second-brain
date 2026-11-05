@@ -14,13 +14,27 @@ A personal knowledge base that runs entirely in your browser. Capture ideas, thi
 
 ## Where your notes are stored
 
-Notes are saved in your browser's IndexedDB on the device you use. Nothing is sent to a server, and this repository contains only the app, none of your notes.
+Notes are saved in your browser's IndexedDB on each device. This repository contains only the app, none of your notes.
 
-That means:
+### Sync between devices (optional)
 
-- Notes don't sync between devices or browsers. Use **Export backup** and **Import backup** on Home to move them.
-- Clearing site data for this site deletes your notes. Export a backup regularly.
-- Importing merges by note: a note in the file replaces the local copy only if it was edited more recently.
+Sync keeps your phone and laptop in step through a secret GitHub Gist on your own account:
+
+1. [Create a classic GitHub token](https://github.com/settings/tokens/new?scopes=gist&description=Second%20Brain%20sync) with only the **gist** scope.
+2. On Home, under **Sync between devices**, paste the token and choose a passphrase. The first device asks you to confirm it.
+3. On each other device, enter the same token and passphrase.
+
+How it works:
+
+- Notes are encrypted in the browser with AES-256-GCM, using a key derived from your passphrase (PBKDF2-SHA256, 310,000 iterations). The gist only ever holds ciphertext, and the passphrase never leaves your device.
+- The passphrase can't be recovered. If you forget it, turn sync off, delete the gist named `second-brain.sync.json`, and set sync up again (your notes stay on each device).
+- Devices merge note by note: the most recent edit wins, and deletions sync too.
+- Sync runs when the app opens, a few seconds after you edit, when you return to the tab, when you come back online, and every 2 minutes. **Sync now** runs it immediately.
+- The token and the derived key are stored in this browser's IndexedDB. Use a token with only the gist scope, and give it an expiry you're comfortable with.
+
+### Backups
+
+**Export backup** on Home downloads every note as JSON, and **Import backup** merges a file back in (a note in the file replaces the local copy only if it was edited more recently). Clearing site data for this site deletes the notes on that device, so export now and then, or keep sync on.
 
 ## Files
 
