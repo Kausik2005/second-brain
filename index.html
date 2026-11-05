@@ -247,6 +247,8 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);margin:0;
 .b-idea{background:var(--b-idea)} .b-learning{background:var(--b-learning)} .b-project{background:var(--b-project)} .b-task{background:var(--b-task)} .tagsw{border:1.4px solid var(--brain-muted)}
 .brain-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--brain-muted);font-size:14px;pointer-events:none}
 .brain-hint{margin:0;font-size:12.5px;color:var(--muted)}
+.home-brain{position:relative;height:320px;border-radius:12px;overflow:hidden;background:var(--brain-bg)}
+.hb-tip{position:absolute;top:10px;right:12px;font-size:12px;color:var(--brain-muted);pointer-events:none;max-width:calc(100% - 24px);text-align:right}
 .steps{margin:0;padding-left:1.3em;font-size:14px;display:flex;flex-direction:column;gap:4px;align-self:stretch}
 .syncform{display:flex;flex-direction:column;gap:10px;align-self:stretch}
 .syncform .fld input{background:var(--bg)}
@@ -275,6 +277,8 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);margin:0;
   .hello h1{font-size:24px}
   .brain-h{font-size:24px}
   .lg-host{height:230px}
+  .home-brain{height:250px}
+  .hb-tip{display:none}
 }
 @media (prefers-reduced-motion:reduce){ .thinking::after{animation:none;content:"..."} }
 </style>
@@ -605,6 +609,7 @@ function renderHome(){
   if(!S.db) h+=`<div class="banner">This browser is blocking storage (a private window or blocked site data), so notes you add here won't be kept.</div>`;
   if(!all.length){ h+=`<div class="empty" style="padding-left:0"><strong>Your second brain is empty.</strong>Type a thought in the bar above and press Enter. Start with <b>t:</b> for a task, <b>p:</b> for a project or <b>l:</b> for something you learned.</div>`+(S.db?`<div class="grid2" style="margin-top:22px">${syncPanel()}${backupPanel()}</div>`:"")+`</div>`; $wide.innerHTML=h; return; }
   if(c.inbox) h+=`<div class="inbox-cta"><span class="n">${c.inbox}</span><p>${c.inbox===1?"capture is":"captures are"} waiting in your inbox. File ${c.inbox===1?"it":"them"} so ${c.inbox===1?"it turns":"they turn"} up in the right place later.</p><button class="btn primary" data-view="inbox">Process inbox</button></div>`;
+  h+=homeBrain();
   const open=all.filter(n=>n.kind==="task"&&!n.done&&!n.inbox).sort(taskSort).slice(0,8);
   const projs=all.filter(n=>n.kind==="project"&&!n.inbox&&(n.status||"active")==="active").sort(byUpdated).slice(0,6);
   h+=`<div class="grid2"><div class="panel"><h2>Next up<button class="btn ghost sm" data-view="task">All tasks</button></h2><div class="box"><div class="mini">${open.length?open.map(n=>{ const p=n.project&&S.notes.get(n.project); return `<div class="it" data-open="${n.id}"><input type="checkbox" data-act="done" data-id="${n.id}" aria-label="Mark done"><span class="t">${esc(n.title||"Untitled")}${p?` <span class="chip">· ${esc(p.title)}</span>`:""}</span>${dueChip(n)}</div>`;}).join(""):`<div class="empty" style="padding:12px">No open tasks. Capture one with <b>t:</b></div>`}</div></div></div>`;
@@ -619,6 +624,7 @@ function renderHome(){
   h+=`<div class="panel"><h2>Recently touched</h2><div class="box"><div class="mini">${recent.map(n=>`<div class="it" data-open="${n.id}">${kb(n)}<span class="t">${esc(n.title||"Untitled")}</span><span class="chip">${fmt(n.updated)}</span></div>`).join("")}</div></div></div></div>`;
   if(S.db) h+=`<div class="grid2">${syncPanel()}${backupPanel()}</div>`;
   $wide.innerHTML=h+"</div>";
+  const hb=$("hb-host"); if(hb){ hb.prepend(HG.canvas); HG.setData(graphData({tags:true, done:false}), null); HG.kick(); }
 }
 
 function backupPanel(){
@@ -699,7 +705,8 @@ function applySugg(id){ const s=S.suggest.get(id), n=S.notes.get(id); if(!s||!n)
 /* ---------- brain graph ---------- */
 function BrainGraph(o){
   const local=!!o.local;
-  const cv=document.createElement("canvas"); cv.className="brain-cv"+(local?" local":"");
+  const embed=!!o.embed;
+  const cv=document.createElement("canvas"); cv.className="brain-cv"+(local||embed?" local":"");
   cv.setAttribute("role","img"); cv.setAttribute("aria-label", local?"Map of notes connected to this one":"Map of all your notes and how they connect");
   const ctx=cv.getContext("2d");
   let W=300,H=200,dpr=1, nodes=[], edges=[], byId=new Map(), adj=new Map(), focus=null, hover=null, alpha=0, raf=0, sig="", pulses=[], lastSpawn=0, autoFit=true, now=0;
@@ -743,7 +750,7 @@ function BrainGraph(o){
         const d=Math.sqrt(d2), f=rep/d2, fx=dx/d*f, fy=dy/d*f; a.vx-=fx; a.vy-=fy; b.vx+=fx; b.vy+=fy; } }
     for(const e of edges){ const a=e.s,b=e.t, dx=b.x-a.x, dy=b.y-a.y, d=Math.sqrt(dx*dx+dy*dy)||1, k=.05*alpha*(d-e.len)/d; a.vx+=dx*k; a.vy+=dy*k; b.vx-=dx*k; b.vy-=dy*k; }
     for(const a of nodes){
-      a.vx-=a.x*.006*alpha; a.vy-=a.y*.011*alpha;            /* wider than tall, like a brain seen from the side */
+      a.vx-=a.x*.006*alpha; a.vy-=a.y*(embed?.02:.011)*alpha;            /* wider than tall, like a brain seen from the side */
       if(a.fx!=null){ a.x=a.fx; a.y=a.fy; a.vx=a.vy=0; continue; }
       a.vx*=.62; a.vy*=.62;
       const sp=Math.hypot(a.vx,a.vy); if(sp>24){ a.vx*=24/sp; a.vy*=24/sp; }
@@ -751,7 +758,7 @@ function BrainGraph(o){
     alpha*=.982;
   }
   function bounds(){ let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity; for(const n of nodes){ x0=Math.min(x0,n.x-n.r); x1=Math.max(x1,n.x+n.r); y0=Math.min(y0,n.y-n.r); y1=Math.max(y1,n.y+n.r+16); } return nodes.length?{x0,y0,x1,y1}:{x0:-50,y0:-50,x1:50,y1:50}; }
-  function fit(instant){ if(!nodes.length) return; const b=bounds(), pad=local?50:70, bw=Math.max(60,b.x1-b.x0), bh=Math.max(60,b.y1-b.y0);
+  function fit(instant){ if(!nodes.length) return; const b=bounds(), pad=local?50:embed?24:70, bw=Math.max(60,b.x1-b.x0), bh=Math.max(60,b.y1-b.y0);
     const k=Math.max(.25, Math.min((W-pad*2)/bw, (H-pad*2)/bh, local?2.4:2.2)), tx=-(b.x0+b.x1)/2*k, ty=-(b.y0+b.y1)/2*k;
     if(instant){ view.k=k; view.x=tx; view.y=ty; } else { view.k+=(k-view.k)*.12; view.x+=(tx-view.x)*.12; view.y+=(ty-view.y)*.12; } }
 
@@ -802,7 +809,7 @@ function BrainGraph(o){
     ctx.font=`500 ${fs}px "IBM Plex Sans", system-ui, sans-serif`; ctx.textAlign="center"; ctx.textBaseline="top"; ctx.lineJoin="round";
     for(const n of nodes){
       const dim=hub && n!==hub && !nb.has(n.id);
-      const show = local ? (n.depth<=1 || (hub&&nb.has(n.id)) || view.k>1.3) : (n===hub || (nb&&nb.has(n.id)) || view.k>1.3 || n.deg>=5 || nodes.length<=24);
+      const show = local ? (n.depth<=1 || (hub&&nb.has(n.id)) || view.k>1.3) : embed ? (n===hub || (nb&&nb.has(n.id)) || (!hub && n.type==="note" && n.deg>=3)) : (n===hub || (nb&&nb.has(n.id)) || view.k>1.3 || n.deg>=5 || nodes.length<=24);
       if(!show) continue;
       const txt=trunc(n.label, n===hub?50:(local?24:26)), y=n.y+n.r+5*lw;
       ctx.globalAlpha=dim?.3:(n===hub?1:(local&&n.depth>=2?.6:.88));
@@ -830,7 +837,7 @@ function BrainGraph(o){
     const [x,y]=pos(e); pts.set(e.pointerId,{x,y});
     if(pts.size===2){ const [a,b]=[...pts.values()]; pinch={d:Math.hypot(a.x-b.x,a.y-b.y), k:view.k}; drag=null; return; }
     const n=pick(x,y,e.pointerType==="touch");
-    if(!n && local && e.pointerType==="touch") { drag=null; return; }
+    if(!n && (local||embed) && e.pointerType==="touch") { drag=null; return; }
     try{ cv.setPointerCapture(e.pointerId); }catch(_){}
     drag = n ? {node:n, sx:x, sy:y, moved:false} : {pan:true, sx:x, sy:y, vx:view.x, vy:view.y, moved:false};
   });
@@ -859,7 +866,7 @@ function BrainGraph(o){
   }
   cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", e=>{ pts.delete(e.pointerId); drag=null; pinch=null; });
   cv.addEventListener("pointerleave", ()=>{ if(hover && !drag){ hover=null; pulses=[]; cv.style.cursor=""; start(); draw(); } });
-  if(!local) cv.addEventListener("wheel", e=>{ e.preventDefault(); const [x,y]=pos(e); const [wx,wy]=toWorld(x,y); const k=Math.max(.2,Math.min(4,view.k*Math.exp(-e.deltaY*.0015)));
+  if(!local && !embed) cv.addEventListener("wheel", e=>{ e.preventDefault(); const [x,y]=pos(e); const [wx,wy]=toWorld(x,y); const k=Math.max(.2,Math.min(4,view.k*Math.exp(-e.deltaY*.0015)));
     view.k=k; view.x=x-W/2-wx*k; view.y=y-H/2-wy*k; autoFit=false; start(); draw(); }, {passive:false});
 
   return { canvas:cv, setData, setFocus, degree, kick(){ start(); draw(); }, fitNow(){ autoFit=true; fit(true); start(); draw(); } };
@@ -901,6 +908,13 @@ const TG = BrainGraph({local:true, onClick:graphClick, onOpen:graphClick});
 const GG = BrainGraph({local:false,
   onClick:n=>{ S.brainFocus=n?n.id:null; GG.setFocus(S.brainFocus); renderBrainCard(); },
   onOpen:n=>{ if(n.type==="tag") setView("tag", n.id.slice(1)); else openNote(n.id); }});
+const HG = BrainGraph({local:false, embed:true, onClick:n=>{ if(!n) return; if(n.type==="tag") setView("tag", n.id.slice(1)); else openNote(n.id); }, onOpen:()=>{}});
+function homeBrain(){
+  const d=graphData({tags:true, done:false}); if(!d.nodes.length) return "";
+  const nn=d.nodes.filter(n=>n.type==="note").length, links=d.edges.length;
+  return `<div class="panel"><h2>Your brain · ${pl(nn,"note")} · ${pl(links,"connection")}<button class="btn ghost sm" data-view="brain">Open full map</button></h2>
+    <div class="home-brain" id="hb-host"><div class="brain-legend">${Object.entries(KINDS).map(([k,v])=>`<span><i class="bsw b-${k}"></i>${v.plural}</span>`).join("")}<span><i class="bsw tagsw"></i>Tags</span></div><span class="hb-tip">Point at a node to light up its connections · click to open</span></div></div>`;
+}
 function renderBrain(mount){
   if(mount || !$("brain-stage")){
     $wide.innerHTML=`<div class="brain-wrap">
