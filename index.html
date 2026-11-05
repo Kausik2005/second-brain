@@ -221,7 +221,7 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);margin:0;
 
 .conn h3{display:flex;align-items:center;gap:8px}
 .conn h3 .btn{margin-left:auto;text-transform:none;letter-spacing:0;font-family:var(--f-ui);font-size:13px}
-.lg-host{height:270px;border-radius:10px;overflow:hidden;background:var(--brain-bg)}
+.lg-host{height:320px;border-radius:10px;overflow:hidden;background:var(--brain-bg)}
 .lg-host.tag{height:240px;margin-bottom:12px;flex:none}
 .conn-hint{margin:0;font-size:13px;color:var(--muted)}
 .brain-cv{display:block;width:100%;height:100%;touch-action:none}
@@ -742,15 +742,15 @@ function BrainGraph(o){
   function degree(id){ return adj.get(id)?.size||0; }
 
   function tick(){
-    const n=nodes.length, rep=(local?1500:1000)*alpha;
+    const n=nodes.length, asp=Math.max(1.4,Math.min(3,W/Math.max(1,H))), spread=local?Math.min(1.5,1+n/60):Math.min(1.9, 1+n/90), rep=(local?1500:1000)*spread*spread*alpha;
     for(let i=0;i<n;i++){ const a=nodes[i];
       for(let j=i+1;j<n;j++){ const b=nodes[j]; let dx=b.x-a.x, dy=b.y-a.y, d2=dx*dx+dy*dy;
         if(d2<.01){ dx=Math.random()-.5; dy=Math.random()-.5; d2=.25; }
-        if(d2>160000) continue;
+        if(d2>250000) continue;
         const d=Math.sqrt(d2), f=rep/d2, fx=dx/d*f, fy=dy/d*f; a.vx-=fx; a.vy-=fy; b.vx+=fx; b.vy+=fy; } }
-    for(const e of edges){ const a=e.s,b=e.t, dx=b.x-a.x, dy=b.y-a.y, d=Math.sqrt(dx*dx+dy*dy)||1, k=.05*alpha*(d-e.len)/d; a.vx+=dx*k; a.vy+=dy*k; b.vx-=dx*k; b.vy-=dy*k; }
+    for(const e of edges){ const a=e.s,b=e.t, dx=b.x-a.x, dy=b.y-a.y, d=Math.sqrt(dx*dx+dy*dy)||1, k=.05*alpha*(d-e.len*spread)/d; a.vx+=dx*k; a.vy+=dy*k; b.vx-=dx*k; b.vy-=dy*k; }
     for(const a of nodes){
-      a.vx-=a.x*.006*alpha; a.vy-=a.y*(embed?.02:.011)*alpha;            /* wider than tall, like a brain seen from the side */
+      a.vx-=a.x*.006*alpha; a.vy-=a.y*.006*asp*(embed?1.3:local?2.2:1)*alpha;   /* squash to the panel's shape, like a brain seen from the side */            /* wider than tall, like a brain seen from the side */
       if(a.fx!=null){ a.x=a.fx; a.y=a.fy; a.vx=a.vy=0; continue; }
       a.vx*=.62; a.vy*=.62;
       const sp=Math.hypot(a.vx,a.vy); if(sp>24){ a.vx*=24/sp; a.vy*=24/sp; }
@@ -758,7 +758,7 @@ function BrainGraph(o){
     alpha*=.982;
   }
   function bounds(){ let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity; for(const n of nodes){ x0=Math.min(x0,n.x-n.r); x1=Math.max(x1,n.x+n.r); y0=Math.min(y0,n.y-n.r); y1=Math.max(y1,n.y+n.r+16); } return nodes.length?{x0,y0,x1,y1}:{x0:-50,y0:-50,x1:50,y1:50}; }
-  function fit(instant){ if(!nodes.length) return; const b=bounds(), pad=local?50:embed?24:70, bw=Math.max(60,b.x1-b.x0), bh=Math.max(60,b.y1-b.y0);
+  function fit(instant){ if(!nodes.length) return; const b=bounds(), pad=local?26:embed?24:70, bw=Math.max(60,b.x1-b.x0), bh=Math.max(60,b.y1-b.y0);
     const k=Math.max(.25, Math.min((W-pad*2)/bw, (H-pad*2)/bh, local?2.4:2.2)), tx=-(b.x0+b.x1)/2*k, ty=-(b.y0+b.y1)/2*k;
     if(instant){ view.k=k; view.x=tx; view.y=ty; } else { view.k+=(k-view.k)*.12; view.x+=(tx-view.x)*.12; view.y+=(ty-view.y)*.12; } }
 
@@ -807,11 +807,21 @@ function BrainGraph(o){
     }
     const fs=(local?11.5:12)*lw;
     ctx.font=`500 ${fs}px "IBM Plex Sans", system-ui, sans-serif`; ctx.textAlign="center"; ctx.textBaseline="top"; ctx.lineJoin="round";
+    const cands=[];
     for(const n of nodes){
       const dim=hub && n!==hub && !nb.has(n.id);
       const show = local ? (n.depth<=1 || (hub&&nb.has(n.id)) || view.k>1.3) : embed ? (n===hub || (nb&&nb.has(n.id)) || (!hub && n.type==="note" && n.deg>=3)) : (n===hub || (nb&&nb.has(n.id)) || view.k>1.3 || n.deg>=5 || nodes.length<=24);
-      if(!show) continue;
+      if(!show && !(hub===null && !local && !embed)) continue;
+      const pr = n===hub?1e9 : (nb&&nb.has(n.id)?1e6:0) + (local&&n.depth===1?1e5:0) + (n.type==="note"?1e3:0) + n.deg*10;
+      cands.push([pr,n,dim]);
+    }
+    cands.sort((a,b)=>b[0]-a[0]);
+    const placed=[];                      /* draw the most important labels first and skip any that would overlap */
+    for(const [,n,dim] of cands){
       const txt=trunc(n.label, n===hub?50:(local?24:26)), y=n.y+n.r+5*lw;
+      const w=ctx.measureText(txt).width, h=fs*1.3, x0=n.x-w/2-3*lw, x1=n.x+w/2+3*lw, y1=y+h;
+      if(placed.some(r=>x0<r[2]&&x1>r[0]&&y<r[3]&&y1>r[1])) continue;
+      placed.push([x0,y,x1,y1]);
       ctx.globalAlpha=dim?.3:(n===hub?1:(local&&n.depth>=2?.6:.88));
       ctx.strokeStyle=C.bg; ctx.lineWidth=3.5*lw; ctx.strokeText(txt,n.x,y);
       ctx.fillStyle=n.type==="tag"?C.muted:C.ink; ctx.fillText(txt,n.x,y);
@@ -897,7 +907,7 @@ function localData(fid){
   const first=nb.get(fid).slice().sort((a,b)=>(a[0]==="#")-(b[0]==="#"));
   for(const id of first) depth.set(id,1);
   let far=0;
-  for(const id of first) for(const j of nb.get(id)) if(!depth.has(j) && far<28){ depth.set(j,2); far++; }
+  for(const id of first) for(const j of nb.get(id)) if(!depth.has(j) && far<16){ depth.set(j,2); far++; }
   const nodes=g.nodes.filter(n=>depth.has(n.id)).map(n=>({...n, depth:depth.get(n.id)}));
   const edges=g.edges.filter(e=>depth.has(e.s)&&depth.has(e.t)&&!(depth.get(e.s)===2&&depth.get(e.t)===2));
   return {nodes, edges, sig:nodes.map(n=>n.id+":"+n.depth+":"+n.label+":"+n.kind+":"+(n.done?1:0)).join(",")+"|"+edges.map(e=>e.s+">"+e.t).join(",")};
